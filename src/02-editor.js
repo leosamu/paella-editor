@@ -100,6 +100,8 @@
 			tools:[],
 			currentTrack:null,
 			currentTool:null,
+			_isLoading:false,
+			
 			
 			tracks:function() {
 				return new Promise((resolve,reject) => {
@@ -141,6 +143,25 @@
 				});
 			},
 			
+			saveAll:function() {
+				this.isLoading = true;
+				return new Promise((resolve,reject) => {
+					this.tracks().then((tracks) => {
+						let promisedTasks = [];
+						tracks.forEach((track) => {
+							promisedTasks.push(track.plugin.onSave());
+						});
+						Promise.all(promisedTasks)
+							.then(() => {
+								$rootScope.$apply(() => {
+									this.isLoading = false;
+									resolve();
+								});
+							});
+					});
+				});
+			},
+			
 			saveTrack:function(pluginId,trackData) {
 				this.tracks().then((tracks) => {
 						tracks.forEach(function(t) {
@@ -154,7 +175,8 @@
 								});
 								
 								if (index>=0) {
-									t.list[index] = trackData;
+									t.list[index].s = trackData.s;
+									t.list[index].e = trackData.e;
 								}
 								t.plugin.onTrackChanged(trackData.id, trackData.s, trackData.e);
 								$rootScope.$apply();
@@ -165,7 +187,26 @@
 			},
 			
 			saveTrackContent:function(pluginId,trackData) {
-				
+				this.tracks().then((tracks) => {
+						tracks.forEach(function(t) {
+							if (t.pluginId == pluginId) {
+								var index = -1;
+								t.list.some(function(trackItem, i) {
+									if (trackItem.id==trackData.id) {
+										index = i;
+										return true;
+									}
+								});
+								
+								if (index>=0) {
+									t.list[index].name = trackData.name;
+								}
+								t.plugin.onTrackContentChanged(trackData.id,trackData.name);
+								$rootScope.$apply();
+							}
+						});
+						this.notify();
+					});
 			},
 			
 			selectTrack:function(trackData) {
@@ -220,6 +261,17 @@
 		service.tracks().then((tracks) => {
 			// Tracks loaded
 		});
+		
+		Object.defineProperty(service,'isLoading', {
+			get: function() {
+				return this._isLoading;
+			},
+			
+			set: function(v) {
+				this._isLoading = v;
+				service.notify();
+			}
+		})
 					
 		return service;
 	}]);

@@ -47,8 +47,7 @@
 		}
 
 		onTrackChanged(id,start,end) {
-			//base.log.debug('Track changed: id=' + id + ", start: " + start + ", end:" + end);
-			console.log("Track changed: s=" + start + ", e=" + end);
+			//console.log("Track changed: s=" + start + ", e=" + end);
 		}
 
 		onTrackContentChanged(id,content) {
@@ -56,11 +55,11 @@
 		}
 
 		onSelect(trackItemId) {
-			base.log.debug('Track list selected: ' + this.getTrackName());
+			console.log('Track item selected: ' + this.getTrackName() + ", " + trackItemId);
 		}
 
-		onUnselect() {
-			base.log.debug('Track list unselected: ' + this.getTrackName());
+		onUnselect(id) {
+			console.log('Track list unselected: ' + this.getTrackName() + ", " + id);
 		}
 
 		onDblClick(trackData) {
@@ -96,7 +95,7 @@
 	class TestPlugin2 extends paella.editor.MainTrackPlugin {
 		
 		checkEnabled() {
-			return Promise.resolve(true);
+			return Promise.resolve(false);
 		}
 		
 		getIndex() {
@@ -138,29 +137,27 @@
 		}
 
 		onTrackChanged(id,start,end) {
-			//base.log.debug('Track changed: id=' + id + ", start: " + start + ", end:" + end);
-			console.log("Track changed: s=" + start + ", e=" + end);
+			//console.log("Track changed: s=" + start + ", e=" + end);
 		}
 
 		onTrackContentChanged(id,content) {
-			//base.log.debug('Track content changed: id=' + id + ', new content: ' + content);
-			console.log("Track content changed: " + content);
+			//console.log("Track content changed: " + content);
 		}
 		
 		onSave() {
 			return new Promise((resolve,reject) => {
-				setTimeout(function() {
+				//setTimeout(function() {
 					resolve();
-				},5000);
+				//},5000);
 			});
 		}
 
 		onSelect(trackItemId) {
-			base.log.debug('Track list selected: ' + this.getTrackName());
+			console.log('Track item selected: ' + this.getTrackName() + ", " + trackItemId);
 		}
 
-		onUnselect() {
-			base.log.debug('Track list unselected: ' + this.getTrackName());
+		onUnselect(id) {
+			console.log('Track list unselected: ' + this.getTrackName() + ", " + id);
 		}
 
 		onDblClick(trackData) {
@@ -177,10 +174,6 @@
 
 		isToolEnabled(toolName) {
 			return true;
-		}
-
-		buildToolTabContent(tabContainer) {
-
 		}
 
 		getSettings() {
@@ -202,7 +195,6 @@
 				
 				PaellaEditor.subscribe($scope,() => {
 					$scope.currentTrack = PaellaEditor.currentTrack;
-					console.log($scope.currentTrack);
 					if ($scope.currentTrack) {
 						$scope.trackName = $scope.currentTrack.name;	
 					}
@@ -212,6 +204,10 @@
 	});
 
 	class TestSideBar2 extends paella.editor.SideBarPlugin {
+		checkEnabled() {
+			return Promise.resolve(false);
+		}
+
 		getName() {
 			return "My side bar plugin 2";
 		}
@@ -241,6 +237,10 @@
 	});
 	
 	class SidebarPlugin2 extends paella.editor.SideBarPlugin {
+		checkEnabled() {
+			return Promise.resolve(false);
+		}
+		
 		getName() {
 			return "other sidebar plugin";
 		}

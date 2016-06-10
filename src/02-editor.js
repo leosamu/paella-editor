@@ -93,24 +93,34 @@
 
 	var app = angular.module(paella.editor.APP_NAME);
 	
-	app.factory("PaellaEditor", [ "$rootScope", function($rootScope) {
+	app.factory("PaellaEditor", [ "$rootScope", "$timeout", "PluginManager", function($rootScope,$timeout,PluginManager) {
 		let videoData = null;
-		var service = {
-			_tracks:[],
-			tools:[],
-			currentTrack:null,
-			currentTool:null,
-			_isLoading:false,
-			
-			
-			tracks:function() {
-				return new Promise((resolve,reject) => {
+		let currentTrackItem = {
+			plugin:null,
+			trackItem:null
+		};
+		
+		let _editorLoaded = false;
+		let _loadingEditor = false;
+		function ensurePaellaEditorLoaded() {
+			return new Promise((resolve) => {
+				if (_loadingEditor) {
+					$timeout(() => {
+						if (_editorLoaded) {
+							resolve();
+						}
+					}, 100);
+				}
+				else {
+					_loadingEditor = true;
+				
 					paella.player.videoContainer.masterVideo().getVideoData()
-						.then((data) => {
+						.then((data) => {	// Video data
 							videoData = data;
-							paella.editor.pluginManager.enabledPlugins.then((plugins) => {
-								let promisedTrackItems = [];
-								if (this._tracks.length==0) {
+							PluginManager.plugins()
+								.then((plugins) => {
+									let promisedTrackItems = [];
+									service._tracks = [];
 									plugins.trackPlugins.forEach((plugin) => {
 										promisedTrackItems.push(plugin.getTrackItems()
 											.then((trackItems) => {
@@ -118,7 +128,7 @@
 												trackItems.forEach((item) => {
 													item.depth = depth++;
 												});
-												this._tracks.push({
+												service._tracks.push({
 													pluginId:plugin.getName(),
 													type:plugin.getTrackType(),
 													name:plugin.getTrackName(),
@@ -133,13 +143,29 @@
 												});
 											}));
 									});
-								}
-								Promise.all(promisedTrackItems)
-									.then(() => {
-										resolve(this._tracks);
-									});
-							}); 
-						})
+
+									return Promise.all(promisedTrackItems);
+								})
+
+								.then(() => {
+									_editorLoaded = true;
+									resolve(service._tracks);
+								});
+						});
+				}
+			});
+		}
+
+		var service = {
+			_tracks:[],
+			tools:[],
+			currentTrack:null,
+			currentTool:null,
+			_isLoading:false,
+			
+			tracks:function() {
+				return new Promise((resolve) => {
+					ensurePaellaEditorLoaded().then(() => resolve(this._tracks) );
 				});
 			},
 			
@@ -242,6 +268,20 @@
 				}
 			},
 			
+			selectTrackItem:function(plugin,trackData) {
+				if (currentTrackItem.plugin != plugin ||
+					!currentTrackItem.trackData || currentTrackItem.trackData.id!=trackData.id)
+				{
+					if (currentTrackItem.plugin)
+					{
+						currentTrackItem.plugin.onUnselect(currentTrackItem.trackData && currentTrackItem.trackData.id);
+					}
+					plugin.onSelect(trackData.id);
+					currentTrackItem.plugin = plugin;
+					currentTrackItem.trackData = trackData;
+				}
+			},
+			
 			subscribe:function(scope, callback) {
 				var handler = $rootScope.$on('notify-service-changed', callback);
 				scope.$on('destroy', handler);
@@ -249,18 +289,19 @@
 			
 			notify:function() {
 				$rootScope.$emit('notify-service-changed');
+				$rootScope.$apply();
 			},
 			
 			plugins:function() {
-				return paella.editor.pluginManager.enabledPlugins;
+				return PluginManager.plugins();
 			}
 		};
 		
-		paella.editor.pluginManager.loadPlugins();
-		
-		service.tracks().then((tracks) => {
-			// Tracks loaded
-		});
+		ensurePaellaEditorLoaded()
+			.then(() => {
+				// Loaded
+				$rootScope.$apply();
+			});
 		
 		Object.defineProperty(service,'isLoading', {
 			get: function() {

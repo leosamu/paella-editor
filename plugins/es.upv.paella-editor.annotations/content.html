@@ -1,0 +1,35 @@
+<p>Current track: {{ currentTrack.name }}</p>
+<div>	
+	<select ng-model="selectedAnnotation" ng-options="trackItem.name for trackItem in currentTrack.list">
+	</select>
+	<form role="form">		
+		<div class="form-group">
+			<label>Name</label>
+			<input type="trackItemName" class="form-control" value="{{selectedAnnotation.name}}">
+		</div>
+		<div class="form-group">
+			<label for="">Start</label>
+			<input type="trackItemStart" class="form-control" value="{{selectedAnnotation.s | number : 2}}">
+		</div>
+		<div class="form-group">
+			<label for="">End</label>
+			<input type="trackItemEnd" class="form-control" value="{{selectedAnnotation.e | number: 2 }}">
+		</div>
+		<div class="form-group">
+			<label for="">Data</label>
+			<input type="trackItemText" class="form-control" value="{{selectedAnnotation.data }}">
+		</div>
+		<div class="form-group">
+			<label for="">Style</label>
+			<input type="trackItemStyle" class="form-control" value="{{selectedAnnotation.style }}">
+		</div>
+		<div class="form-group">
+			<label for="">Profile</label>
+			<input type="trackItemStyle" class="form-control" value="{{selectedAnnotation.profile }}">
+		</div>
+		<div class="form-group">
+			<label for="">Pauser</label>
+			<input type="trackItemStyle" class="form-control" value="{{selectedAnnotation.pauser }}">
+		</div>
+	</form>
+</div>

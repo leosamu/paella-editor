@@ -238,11 +238,19 @@
 			selectTrack:function(trackData) {
 				if (!this.currentTrack || this.currentTrack.pluginId!=trackData.pluginId) {
 					var This = this;
+					if (currentTrackItem.trackData) {
+						currentTrackItem.trackData.selected = false;
+					}
+					if (trackData && trackData.list.length==1) {
+						trackData.list[0].selected = true;
+					}
 					this.currentTrack = trackData;
 					this.currentTool = null;
 					this._tracks.forEach(function(track) {
+						track.selected = false;
 						track.plugin.onToolSelected(trackData);
 					});
+					trackData.selected = true;
 					this.tools = [];
 					trackData.plugin.getTools().forEach(function(tool) {
 						var isEnabled = This.currentTrack.plugin.isToolEnabled(tool);
@@ -268,10 +276,13 @@
 				}
 			},
 			
-			selectTrackItem:function(plugin,trackData) {
+			selectTrackItem:function(plugin,trackData,tracks) {
 				if (currentTrackItem.plugin != plugin ||
 					!currentTrackItem.trackData || currentTrackItem.trackData.id!=trackData.id)
 				{
+					if (currentTrackItem.trackData) {
+						currentTrackItem.trackData.selected = false;
+					}
 					if (currentTrackItem.plugin)
 					{
 						currentTrackItem.plugin.onUnselect(currentTrackItem.trackData && currentTrackItem.trackData.id);
@@ -279,6 +290,9 @@
 					plugin.onSelect(trackData.id);
 					currentTrackItem.plugin = plugin;
 					currentTrackItem.trackData = trackData;
+					currentTrackItem.trackData.selected = true;
+					this.currentTrackItem = { trackData:trackData, plugin: plugin };
+					this.notify();
 				}
 			},
 			
@@ -289,7 +303,6 @@
 			
 			notify:function() {
 				$rootScope.$emit('notify-service-changed');
-				$rootScope.$apply();
 			},
 			
 			plugins:function() {

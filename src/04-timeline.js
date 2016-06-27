@@ -5,7 +5,7 @@
 		return {
 			restrict: "E",
 			templateUrl: "templates/timeline.html",
-			controller: ["$scope","$translate","PaellaEditor",function($scope,$translate,PaellaEditor) {
+			controller: ["$scope","$translate","PaellaEditor","PluginManager",function($scope,$translate,PaellaEditor,PluginManager) {
 				$scope.zoom = 100;
 				$scope.zoomOptions = {
 					floor:100,
@@ -17,6 +17,18 @@
 				};
 				
 				$scope.divisionWidth = 60;
+
+				$scope.currentTime = toTextTime(0);
+
+				function toTextTime(time) {
+					let hours = Math.floor(time / (60 * 60));
+					let seconds = time % (60 * 60);
+					let minutes = Math.floor(seconds / 60);
+					seconds = Math.ceil(seconds % 60);
+					return hours + ":" +
+							(minutes<10 ? "0":"") + minutes + ":" +
+							(seconds<10 ? "0":"") + seconds;
+				}
 				
 				function setTimeMark(time) {
 					let p = time.currentTime * $scope.zoom / time.duration;
@@ -31,6 +43,8 @@
 				
 				paella.events.bind(paella.events.timeUpdate, function(evt,time) {
 					setTimeMark(time);
+					$scope.currentTime = toTextTime(time.currentTime);
+					$scope.$apply();
 				});
 				
 				function setTime(clientX) {
@@ -68,7 +82,7 @@
 								$(elem).css({ width:divisionWidth + 'px' });
 								timelineRuler.appendChild(elem);
 								
-								time += Math.round(timeIncrement);
+								time += timeIncrement;
 							}
 						});
 				}
@@ -93,66 +107,74 @@
 					});
 				});
 				
-				PaellaEditor.tracks()
-					.then(function(tracks) {
-						$scope.tracks = tracks;
-						$scope.currentTrack = PaellaEditor.currentTrack;
-						$scope.selectTrack = function(t) {
-							PaellaEditor.selectTrack(t);
-						};
-						
-						$scope.tools = PaellaEditor.tools;
-						$scope.currentTool = PaellaEditor.currentTool;
-						$scope.selectTool = function(tool) {
-							if (tool.isEnabled) {
-								PaellaEditor.selectTool(tool.name);
-							}
-						};
-						
-						$scope.selectTrack = function(trackData) {
-							PaellaEditor.selectTrack(trackData);
-						};
-						
-						$scope.saveAndClose = function() {
-							PaellaEditor.saveAll()
-								.then(() => {
-									$scope.closeEditor(true);
-								});
-						};
-						
-						$scope.saveChanges = function() {
-							PaellaEditor.saveAll();
-						};
-						
-						$scope.closeEditor = function(noConfirm) {
-							if (noConfirm || confirm($translate.instant("Are you sure you want to discard all changes and close editor?"))) {
-								location.href = location.href.replace("editor.html","index.html");
-							}
-							
-						};
-						
-						$scope.$watch('tracks', function() {
-							//console.log("Tracks changed");
-							//$scope.$apply();
-						});
-						$scope.$watch('zoom',function() {
-							$('#timeline-content').css({ width:$scope.zoom + "%" });
-							buildTimeDivisions($scope.divisionWidth);
-							paella.player.videoContainer.currentTime()
-								.then((time) => {
-									setTimeMark(time);
-								});
-						});
-						
-						PaellaEditor.subscribe($scope, function() {
+				function reloadTracks() {
+					PaellaEditor.tracks()
+						.then(function(tracks) {
+							$scope.tracks = tracks;
 							$scope.currentTrack = PaellaEditor.currentTrack;
+							$scope.selectTrack = function(t) {
+								PaellaEditor.selectTrack(t);
+							};
+							
 							$scope.tools = PaellaEditor.tools;
 							$scope.currentTool = PaellaEditor.currentTool;
-							//$scope.$apply();
-						});
+							$scope.selectTool = function(tool) {
+								if (tool.isEnabled) {
+									PaellaEditor.selectTool(tool.name);
+								}
+							};
+							
+							$scope.selectTrack = function(trackData) {
+								PaellaEditor.selectTrack(trackData);
+							};
+							
+							$scope.saveAndClose = function() {
+								PaellaEditor.saveAll()
+									.then(() => {
+										$scope.closeEditor(true);
+									});
+							};
+							
+							$scope.saveChanges = function() {
+								PaellaEditor.saveAll();
+							};
+							
+							$scope.closeEditor = function(noConfirm) {
+								if (noConfirm || confirm($translate.instant("Are you sure you want to discard all changes and close editor?"))) {
+									location.href = location.href.replace("editor.html","index.html");
+								}
+								
+							};
+							
+							$scope.$watch('tracks', function() {
+								//console.log("Tracks changed");
+								//$scope.$apply();
+							});
+							$scope.$watch('zoom',function() {
+								$('#timeline-content').css({ width:$scope.zoom + "%" });
+								buildTimeDivisions($scope.divisionWidth);
+								paella.player.videoContainer.currentTime()
+									.then((time) => {
+										setTimeMark(time);
+									});
+							});
+							
+							PaellaEditor.subscribe($scope, function() {
+								$scope.currentTrack = PaellaEditor.currentTrack;
+								$scope.tools = PaellaEditor.tools;
+								$scope.currentTool = PaellaEditor.currentTool;
+								//$scope.$apply();
+							});
 
-						$scope.$apply();
-					});
+							$scope.$apply();
+						});
+				}
+				
+				reloadTracks();
+				
+				PluginManager.subscribeTrackReload($scope,() => {
+					reloadTracks();
+				});
 			}]
 		};
 	});
@@ -169,7 +191,7 @@
 			scope: {
 				data: "="
 			},
-			controller: ["$scope","PaellaEditor",function($scope,PaellaEditor) {
+			controller: ["$scope","PaellaEditor","PluginManager",function($scope,PaellaEditor,PluginManager) {
 				$scope.pluginId = $scope.data.pluginId;
 				$scope.name = $scope.data.name;
 				$scope.color = $scope.data.color;
@@ -179,6 +201,15 @@
 				$scope.allowResize = $scope.data.allowResize;
 				$scope.allowMove = $scope.data.allowMove;
 				$scope.plugin = $scope.data.plugin;
+				$scope.img = $scope.data.img;
+
+				$scope.getStyle = function(item) {
+					let style = `color: ${ $scope.textColor }; background-color: ${ $scope.color };`;
+					if (item.img) {
+						style += ` background-image: url(${ item.img }); background-size: auto 100%;`;
+					}
+					return style;
+				}				
 				
 				function selectTrackItem(trackData,tracks) {
 					PaellaEditor.selectTrack(tracks);
